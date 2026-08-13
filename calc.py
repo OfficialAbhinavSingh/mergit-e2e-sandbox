@@ -1,11 +1,12 @@
-"""Tiny calculator used by the Mergit end-to-end GitHub tests. (run 1786635846)"""
+"""Tiny calculator used by the Mergit end-to-end GitHub tests. (run 1786635973)"""
 
 
 def average(numbers):
-    if len(numbers) == 0:
-        raise ValueError("average() of an empty sequence")
+    if not numbers:
+        return 0.0
     return sum(numbers) / len(numbers)
 
 
 if __name__ == "__main__":
     print(average([1, 2, 3]))
+    print(average([]))
