@@ -4,7 +4,16 @@
 def median(numbers):
     """Return the median of a sequence."""
     ordered = sorted(numbers)
-    return ordered[len(ordered) // 2]
+    n = len(ordered)
+    
+    # For odd-length sequences, return the middle element
+    if n % 2 == 1:
+        return ordered[n // 2]
+    # For even-length sequences, return the average of the two middle elements
+    else:
+        mid1 = ordered[n // 2 - 1]
+        mid2 = ordered[n // 2]
+        return (mid1 + mid2) / 2
 
 
 def spread(numbers):
