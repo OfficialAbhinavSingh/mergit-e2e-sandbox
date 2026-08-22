@@ -9,4 +9,6 @@ def median(numbers):
 
 def spread(numbers):
     """Return the difference between the largest and smallest value."""
+    if not numbers:
+        return 0
     return max(numbers) - min(numbers)
