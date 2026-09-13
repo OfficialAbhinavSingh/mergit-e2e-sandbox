@@ -3,10 +3,10 @@
 An order moves through a small state machine. Every transition is recorded, so support
 can answer "what happened to this order" from the record rather than from a log file.
 
-    DRAFT ─▶ PENDING_PAYMENT ─▶ PAID ─▶ PICKING ─▶ SHIPPED ─▶ DELIVERED
-                    │             │        │          └─▶ RETURNED
-                    ├─▶ EXPIRED   ├─▶ REFUNDED
-                    └─▶ CANCELLED └─▶ CANCELLED
+    DRAFT 6 PENDING_PAYMENT 6 PAID 6 PICKING 6 SHIPPED 6 DELIVERED
+                                                   6 RETURNED
+                    6 EXPIRED   6 REFUNDED
+                    6 CANCELLED 6 CANCELLED
 
 Cancellation is terminal. Once an order is cancelled the warehouse has released its
 stock, so there is nothing left to pick and nothing to ship.
@@ -29,7 +29,7 @@ CANCELLED = "CANCELLED"
 EXPIRED = "EXPIRED"
 
 #: States from which nothing further can happen.
-TERMINAL_STATES = (DELIVERED, REFUNDED, EXPIRED, RETURNED)
+TERMINAL_STATES = (DELIVERED, REFUNDED, EXPIRED, RETURNED, CANCELLED)
 
 _FROM_PAID = (PICKING, REFUNDED, CANCELLED)
 _FROM_PICKING = (SHIPPED, CANCELLED)
@@ -42,7 +42,7 @@ ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
     PICKING: _FROM_PICKING,
     SHIPPED: (DELIVERED, RETURNED),
     DELIVERED: (RETURNED,),
-    CANCELLED: _FROM_PICKING,
+    CANCELLED: (),  # No transitions allowed from CANCELLED
     RETURNED: (REFUNDED,),
     REFUNDED: (),
     EXPIRED: (),

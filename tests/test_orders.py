@@ -100,3 +100,10 @@ def test_open_orders_exclude_the_finished_ones(book):
     done = book.create("cus_2", [OrderLine("WID-100", 1, 1299)], total_cents=1299)
     book.cancel(done.id)
     assert [o.id for o in book.open_orders()] == [live.id]
+
+def test_cancelled_order_cannot_be_shipped_or_delivered(book, order):
+    book.cancel(order.id)
+    with pytest.raises(IllegalTransition):
+        order.transition(SHIPPED)
+    with pytest.raises(IllegalTransition):
+        order.transition(DELIVERED)
