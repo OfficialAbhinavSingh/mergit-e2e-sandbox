@@ -89,3 +89,20 @@ def test_a_snapshot_reports_every_sku(warehouse):
     snapshot = warehouse.snapshot()
     assert set(snapshot) == {"WID-100", "GRM-010"}
     assert snapshot["WID-100"]["sellable"] == 100
+
+
+def test_regression_release_over_reserve():
+    wh = Warehouse()
+    wh.receive('WID-100', 100)
+    rsv = wh.reserve('WID-100', 100)
+    # Release more than reserved should not be possible
+    wh.release(rsv.id, 50)
+    # Try to release more than remaining
+    wh.release(rsv.id, 100)
+    # Reserved should never go negative
+    assert wh.stock('WID-100').reserved >= 0
+    # Reservation should be marked released
+    assert rsv.released
+    # Try to release again should not change reserved
+    with pytest.raises(InventoryError):
+        wh.release(rsv.id, 10)

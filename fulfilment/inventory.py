@@ -86,7 +86,7 @@ class Warehouse:
         self._ttl = ttl_seconds
         self.events: list[tuple[str, str, int]] = []
 
-    # ── Stock ────────────────────────────────────────────────────────────────────
+    # ── Stock ────────────────────────────────────────────────────────────────
 
     def stock(self, sku: str) -> StockLevel:
         if sku not in self._levels:
@@ -118,7 +118,7 @@ class Warehouse:
         """How many units a new order could take."""
         return self.stock(sku).sellable
 
-    # ── Reservations ─────────────────────────────────────────────────────────────
+    # ── Reservations ────────────────────────────────────────────────────────
 
     def reserve(self, sku: str, quantity: int, basket_id: str = "") -> Reservation:
         """Hold `quantity` units for a basket, or refuse if they are not there."""
@@ -152,8 +152,15 @@ class Warehouse:
         if reservation.fulfilled:
             raise InventoryError(f"{reservation_id} was already fulfilled")
 
-        giving_back = reservation.quantity if quantity is None else quantity
+        # FIX: Never release more than is held
+        holding = reservation.quantity
+        giving_back = holding if quantity is None else min(quantity, holding)
+        if giving_back < 0:
+            raise InventoryError(f"cannot release negative quantity: {giving_back}")
         level = self.stock(reservation.sku)
+        # Don't allow reserved to go below zero
+        if giving_back > level.reserved:
+            giving_back = level.reserved
         level.reserved -= giving_back
         reservation.quantity -= giving_back
         if reservation.quantity <= 0:
@@ -198,7 +205,7 @@ class Warehouse:
             self.events.append(("expire", reservation.sku, reservation.quantity))
         return expired
 
-    # ── Reporting helpers ────────────────────────────────────────────────────────
+    # ── Reporting helpers ───────────────────────────────────────────────────
 
     def reservations_for(self, basket_id: str) -> list[Reservation]:
         return [r for r in self._reservations.values()
