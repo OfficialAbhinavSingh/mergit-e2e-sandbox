@@ -89,3 +89,63 @@ def test_a_snapshot_reports_every_sku(warehouse):
     snapshot = warehouse.snapshot()
     assert set(snapshot) == {"WID-100", "GRM-010"}
     assert snapshot["WID-100"]["sellable"] == 100
+
+
+def test_restore_damaged(warehouse):
+    # Set up a damaged pile to restore from.
+    warehouse.write_off("GRM-010", 50)
+    level = warehouse.stock("GRM-010")
+    assert level.on_hand == 450
+    assert level.damaged == 50
+
+    # (1) Successfully restoring damaged units to on_hand.
+    restored_level = warehouse.restore_damaged("GRM-010", 20)
+    assert restored_level is level
+    assert level.on_hand == 470
+    assert level.damaged == 30
+    assert level.sellable == 470
+
+    # The event was recorded.
+    assert ("restore_damaged", "GRM-010", 20) in warehouse.events
+
+    # (2) Raising InventoryError for zero or negative quantity.
+    with pytest.raises(InventoryError):
+        warehouse.restore_damaged("GRM-010", 0)
+    with pytest.raises(InventoryError):
+        warehouse.restore_damaged("GRM-010", -5)
+
+    # State unchanged after failed attempts.
+    assert level.on_hand == 470
+    assert level.damaged == 30
+
+    # (3) Raising InventoryError when trying to restore more units than are damaged.
+    with pytest.raises(InventoryError):
+        warehouse.restore_damaged("GRM-010", 31)
+
+    # State still unchanged.
+    assert level.on_hand == 470
+    assert level.damaged == 30
+
+    # (4) Restoring partial quantities when fewer damaged units exist than requested
+    # should fail: write off a small batch for a fresh SKU and try to over-restore it.
+    warehouse.receive("WID-100", 10)
+    warehouse.write_off("WID-100", 5)
+    widget_level = warehouse.stock("WID-100")
+    assert widget_level.damaged == 5
+    with pytest.raises(InventoryError):
+        warehouse.restore_damaged("WID-100", 6)
+    # Damaged count remains untouched by the failed restore.
+    assert widget_level.damaged == 5
+    assert widget_level.on_hand == 105
+
+    # (5) Verifying the on_hand and damaged counts are correct after a full restoration.
+    warehouse.restore_damaged("WID-100", 5)
+    assert widget_level.damaged == 0
+    assert widget_level.on_hand == 110
+    assert widget_level.sellable == 110
+
+    # Restoring the remaining GRM-010 damaged stock fully clears it too.
+    warehouse.restore_damaged("GRM-010", 30)
+    assert level.damaged == 0
+    assert level.on_hand == 500
+    assert level.sellable == 500

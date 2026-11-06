@@ -114,6 +114,18 @@ class Warehouse:
         self.events.append(("write_off", sku, quantity))
         return level
 
+    def restore_damaged(self, sku: str, quantity: int) -> StockLevel:
+        """Move units from damaged back to on_hand, e.g. after a re-inspection clears them."""
+        level = self.stock(sku)
+        if quantity < 1:
+            raise InventoryError(f"{sku}: cannot restore {quantity} units")
+        if quantity > level.damaged:
+            raise InventoryError(f"{sku}: cannot restore more than is damaged")
+        level.damaged -= quantity
+        level.on_hand += quantity
+        self.events.append(("restore_damaged", sku, quantity))
+        return level
+
     def available(self, sku: str) -> int:
         """How many units a new order could take."""
         return self.stock(sku).sellable
